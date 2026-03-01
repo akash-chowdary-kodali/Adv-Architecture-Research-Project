@@ -1,0 +1,42 @@
+# Models (large GGUF files)
+models/
+*.gguf
+
+
+# Data outputs
+data/raw/
+results/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Claude
+.claude/
+
+# Misc
+*.log
