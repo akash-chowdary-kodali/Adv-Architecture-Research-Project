@@ -4,8 +4,8 @@ models/
 
 
 # Data outputs
-data/raw/
-results/
+*data/
+*results/
 
 # Python
 __pycache__/

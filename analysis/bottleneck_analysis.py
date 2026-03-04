@@ -13,7 +13,7 @@ import json
 import os
 from typing import Dict, List, Optional
 
-from benchmarks.utils import get_output_prefix
+from benchmarks.utils import get_output_prefix, get_platform_tag
 
 import numpy as np
 
@@ -442,9 +442,11 @@ def main():
     if args.output:
         output_path = args.output
     else:
-        os.makedirs(RESULTS_DIR, exist_ok=True)
+        tag = get_platform_tag()
+        tag_dir = os.path.join(RESULTS_DIR, tag)
+        os.makedirs(tag_dir, exist_ok=True)
         prefix = get_output_prefix()
-        output_path = os.path.join(RESULTS_DIR, f"bottleneck_{prefix}.txt")
+        output_path = os.path.join(tag_dir, f"bottleneck_{prefix}.txt")
 
     with open(output_path, "w") as f:
         f.write(report)
