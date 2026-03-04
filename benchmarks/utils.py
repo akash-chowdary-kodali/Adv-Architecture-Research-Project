@@ -53,7 +53,7 @@ def detect_platform() -> Dict[str, str]:
             info["accelerator"] = "CUDA"
             info["gpu_name"] = torch.cuda.get_device_name(0)
             info["gpu_memory_mb"] = str(
-                torch.cuda.get_device_properties(0).total_mem // (1024 * 1024)
+                torch.cuda.get_device_properties(0).total_memory // (1024 * 1024)
             )
     except ImportError:
         pass
