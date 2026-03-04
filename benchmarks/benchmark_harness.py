@@ -10,9 +10,24 @@ Works on all platforms: Mac (Metal), Windows (AVX2), Colab (CUDA).
 """
 
 import argparse
+import contextlib
+import os
 import time
-import sys
 from typing import List, Dict
+
+
+@contextlib.contextmanager
+def suppress_c_stderr():
+    """Redirect C-level stderr (fd 2) to /dev/null to silence llama.cpp init messages."""
+    devnull_fd = os.open(os.devnull, os.O_WRONLY)
+    old_fd = os.dup(2)
+    os.dup2(devnull_fd, 2)
+    os.close(devnull_fd)
+    try:
+        yield
+    finally:
+        os.dup2(old_fd, 2)
+        os.close(old_fd)
 
 from llama_cpp import Llama
 
@@ -28,14 +43,13 @@ from benchmarks.utils import (
 
 
 def run_single_benchmark(
-    model_path: str,
+    llm: Llama,
     prompt_text: str,
     output_length: int,
-    n_ctx: int = CONTEXT_SIZE,
-    n_gpu_layers: int = 0,
 ) -> Dict:
     """
     Run a single inference benchmark and return detailed timing data.
+    Expects a pre-loaded Llama model; resets KV cache before each run.
 
     Returns dict with:
         - ttft_ms: Time to first token (prompt evaluation)
@@ -43,13 +57,7 @@ def run_single_benchmark(
         - e2e_ms: End-to-end total time
         - tokens_generated: Number of tokens actually generated
     """
-    # Load model (suppress verbose output for clean timing)
-    llm = Llama(
-        model_path=model_path,
-        n_ctx=n_ctx,
-        n_gpu_layers=n_gpu_layers,
-        verbose=False,
-    )
+    llm.reset()  # Clear KV cache from any previous trial
 
     timer = CPUTimer()
 
@@ -89,9 +97,6 @@ def run_single_benchmark(
 
     e2e_ms = (time.perf_counter_ns() - e2e_start) / 1_000_000
 
-    # Clean up
-    del llm
-
     return {
         "ttft_ms": ttft_ms,
         "token_times_ms": token_times_ms,
@@ -130,19 +135,28 @@ def benchmark_configuration(
     print(f"Trials: {warmup_runs} warmup + {num_trials} measured")
     print(f"{'='*60}")
 
+    # Load model once — suppresses C-level Metal init spam
+    print("Loading model...")
+    with suppress_c_stderr():
+        llm = Llama(
+            model_path=model_path,
+            n_ctx=CONTEXT_SIZE,
+            n_gpu_layers=n_gpu_layers,
+            verbose=False,
+        )
+    print("Model loaded.")
+
     # --- Warm-up runs ---
     print(f"Running {warmup_runs} warm-up iterations...")
-    for i in range(warmup_runs):
-        run_single_benchmark(model_path, prompt_text, output_length, n_gpu_layers=n_gpu_layers)
-        print(f"  Warm-up {i+1}/{warmup_runs} done")
+    for warmup_idx in range(warmup_runs):
+        run_single_benchmark(llm, prompt_text, output_length)
+        print(f"  Warm-up {warmup_idx+1}/{warmup_runs} done")
 
     # --- Measurement runs ---
     trial_results = []
     print(f"Running {num_trials} measurement trials...")
     for trial in range(num_trials):
-        result = run_single_benchmark(
-            model_path, prompt_text, output_length, n_gpu_layers=n_gpu_layers
-        )
+        result = run_single_benchmark(llm, prompt_text, output_length)
         trial_results.append(result)
 
         # Per-token stats for this trial
@@ -173,6 +187,8 @@ def benchmark_configuration(
 
     # Compute tokens/sec
     tokens_per_sec = 1000.0 / token_stats["mean"] if token_stats["mean"] > 0 else 0
+
+    del llm  # Free model memory after all trials
 
     print(f"\n--- Results (after IQR outlier filtering) ---")
     print(f"TTFT:      mean={ttft_stats['mean']:.2f}ms, std={ttft_stats['std']:.2f}ms")

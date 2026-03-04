@@ -46,6 +46,25 @@ bash scripts/setup_colab.sh
 
 ---
 
+## Team Assignments
+
+Each team member runs benchmarks on their own platform, then runs analysis + plots locally on their own results.
+
+| Person | Platform | What to Run |
+|--------|----------|-------------|
+| Akash | Mac (M4 Pro) | Goals 1, 2, 3 → then Goal 4 + plots |
+| Teammate 2 | Windows (Intel CPU) | Goals 1, 3 → then Goal 4 + plots |
+| Teammate 3 | Mac (M4) | Goals 1, 3 → then Goal 4 + plots |
+| Any one person | Google Colab (GPU) | Goals 1, 3 → then Goal 4 + plots |
+
+**Notes:**
+- **Goal 2 (Latency Decomposition):** Akash only — requires a HuggingFace token with Meta LLaMA 3.2 access.
+- **Colab GPU:** Any team member can run the notebook (`analysis/notebooks/colab_gpu_benchmark.ipynb`) — just needs a Google account.
+- **Goal 4 + Plots:** Everyone runs these on their own results after finishing Goals 1 and 3.
+- All output files are auto-tagged with platform and timestamp (e.g., `benchmark_mac_arm64_...`, `benchmark_windows_x86_...`) so nothing overwrites.
+
+---
+
 ## Step 1: Download Models
 
 GGUF models from bartowski (free, no approval needed):

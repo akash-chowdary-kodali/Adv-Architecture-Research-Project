@@ -7,41 +7,37 @@ set -e
 MODELS_DIR="models"
 mkdir -p "$MODELS_DIR"
 
-echo "=== Downloading LLaMA 3.2 1B GGUF models ==="
+echo "=== Downloading LLaMA 3.2 GGUF models ==="
 
-# Q4_K_M (~0.7GB) - smallest, fastest
-echo "Downloading Q4_K_M..."
-huggingface-cli download bartowski/Llama-3.2-1B-Instruct-GGUF \
-    --include "Llama-3.2-1B-Instruct-Q4_K_M.gguf" \
-    --local-dir "$MODELS_DIR"
+python - <<'EOF'
+from huggingface_hub import hf_hub_download
+import os
 
-# Q8_0 (~1.1GB) - medium precision
-echo "Downloading Q8_0..."
-huggingface-cli download bartowski/Llama-3.2-1B-Instruct-GGUF \
-    --include "Llama-3.2-1B-Instruct-Q8_0.gguf" \
-    --local-dir "$MODELS_DIR"
+MODELS_DIR = "models"
+os.makedirs(MODELS_DIR, exist_ok=True)
 
-# F16 (~2.2GB) - full precision
-echo "Downloading F16..."
-huggingface-cli download bartowski/Llama-3.2-1B-Instruct-GGUF \
-    --include "Llama-3.2-1B-Instruct-f16.gguf" \
-    --local-dir "$MODELS_DIR"
+downloads = [
+    # 1B models
+    ("bartowski/Llama-3.2-1B-Instruct-GGUF", "Llama-3.2-1B-Instruct-Q4_K_M.gguf"),  # ~0.7 GB
+    ("bartowski/Llama-3.2-1B-Instruct-GGUF", "Llama-3.2-1B-Instruct-Q8_0.gguf"),    # ~1.1 GB
+    ("bartowski/Llama-3.2-1B-Instruct-GGUF", "Llama-3.2-1B-Instruct-f16.gguf"),     # ~2.2 GB
+    # 3B models (for scaling analysis)
+    ("bartowski/Llama-3.2-3B-Instruct-GGUF", "Llama-3.2-3B-Instruct-Q4_K_M.gguf"), # ~1.8 GB
+    ("bartowski/Llama-3.2-3B-Instruct-GGUF", "Llama-3.2-3B-Instruct-Q8_0.gguf"),   # ~3.2 GB
+]
 
-echo ""
-echo "=== Downloading LLaMA 3.2 3B GGUF model (for scaling analysis) ==="
+for repo_id, filename in downloads:
+    dest = os.path.join(MODELS_DIR, filename)
+    if os.path.exists(dest):
+        print(f"  Skipping {filename} (already exists)")
+        continue
+    print(f"Downloading {filename}...")
+    hf_hub_download(repo_id=repo_id, filename=filename, local_dir=MODELS_DIR)
+    print(f"  Done.")
 
-# 3B Q4_K_M (~1.8GB) - for model size comparison
-echo "Downloading 3B Q4_K_M..."
-huggingface-cli download bartowski/Llama-3.2-3B-Instruct-GGUF \
-    --include "Llama-3.2-3B-Instruct-Q4_K_M.gguf" \
-    --local-dir "$MODELS_DIR"
-
-# 3B Q8_0 (~3.2GB) - for quantization comparison at 3B scale
-echo "Downloading 3B Q8_0..."
-huggingface-cli download bartowski/Llama-3.2-3B-Instruct-GGUF \
-    --include "Llama-3.2-3B-Instruct-Q8_0.gguf" \
-    --local-dir "$MODELS_DIR"
+print("\nAll models ready.")
+EOF
 
 echo ""
-echo "=== All models downloaded to $MODELS_DIR/ ==="
+echo "=== Models in $MODELS_DIR/ ==="
 ls -lh "$MODELS_DIR"/*.gguf 2>/dev/null || echo "No .gguf files found in $MODELS_DIR"

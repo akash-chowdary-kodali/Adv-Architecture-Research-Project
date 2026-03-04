@@ -61,13 +61,35 @@ def detect_platform() -> Dict[str, str]:
     return info
 
 
+def _get_chip_model() -> str:
+    """Return a short filesystem-safe chip identifier for the current processor.
+
+    Mac Apple Silicon: 'Apple M4 Pro' → 'm4pro', 'Apple M4' → 'm4'
+    Other platforms: returns empty string (chip already encoded via GPU name or OS tag).
+    """
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "machdep.cpu.brand_string"],
+            capture_output=True, text=True, timeout=2,
+        )
+        brand = result.stdout.strip()  # e.g. "Apple M4 Pro"
+        if brand.startswith("Apple "):
+            chip = brand[6:].replace(" ", "").lower()  # "M4 Pro" → "m4pro"
+            return chip
+    except Exception:
+        pass
+    return ""
+
+
 def get_platform_label() -> str:
-    """Return a short label for the current platform (used in CSV output)."""
+    """Return a short human-readable label for the current platform (used in CSV output)."""
     info = detect_platform()
     if info["platform_type"] == "cuda_gpu":
         return f"GPU-{info.get('gpu_name', 'unknown')}"
     elif info["platform_type"] == "apple_silicon":
-        return "Mac-AppleSilicon"
+        chip = _get_chip_model()
+        return f"Mac-{chip.upper()}" if chip else "Mac-AppleSilicon"
     elif info["platform_type"] == "x86_cpu":
         return f"{info['os']}-x86"
     return "unknown"
@@ -76,14 +98,15 @@ def get_platform_label() -> str:
 def get_platform_tag() -> str:
     """Return a short filesystem-safe tag for output filenames.
 
-    Examples: 'mac_arm64', 'windows_x86', 'gpu_T4', 'gpu_A100'
+    Examples: 'mac_arm64_m4pro', 'mac_arm64_m4', 'windows_x86', 'gpu_T4', 'gpu_A100'
     """
     info = detect_platform()
     if info["platform_type"] == "cuda_gpu":
         gpu = info.get("gpu_name", "unknown").split()[-1]  # e.g. "T4", "A100"
         return f"gpu_{gpu}"
     elif info["platform_type"] == "apple_silicon":
-        return "mac_arm64"
+        chip = _get_chip_model()
+        return f"mac_arm64_{chip}" if chip else "mac_arm64"
     elif info["platform_type"] == "x86_cpu":
         return f"{info['os'].lower()}_x86"
     return "unknown"
@@ -92,7 +115,7 @@ def get_platform_tag() -> str:
 def get_output_prefix() -> str:
     """Return a platform + timestamp prefix for output filenames.
 
-    Example: 'mac_arm64_20260228_204532'
+    Example: 'mac_arm64_m4pro_20260303_204532'
     """
     from datetime import datetime
     tag = get_platform_tag()

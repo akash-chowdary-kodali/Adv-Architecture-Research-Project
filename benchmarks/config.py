@@ -61,7 +61,8 @@ WARMUP_RUNS = 3
 NUM_TRIALS = 10
 
 # Context window size for llama-cpp-python
-CONTEXT_SIZE = 2048
+# Must exceed max prompt length + output length (2048 + 128 = 2176 minimum)
+CONTEXT_SIZE = 4096
 
 # --- Scaling Analysis Parameters ---
 SCALING_SEQUENCE_LENGTHS = [128, 256, 512, 1024, 2048]
