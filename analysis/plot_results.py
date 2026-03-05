@@ -41,9 +41,10 @@ def _extract_platform_tag(filepath: str) -> Optional[str]:
     m = re.match(r'^(?:benchmark|scaling|decomposition)_(.+?)_\d{8}_\d{6}', basename)
     return m.group(1) if m else None
 
-# Style configuration
-sns.set_theme(style="whitegrid", font_scale=1.2)
-COLORS = sns.color_palette("husl", 8)
+# Clean, minimal style
+sns.set_theme(style="whitegrid", font_scale=1.1)
+BLUE = "#4C72B0"
+COLORS = ["#4C72B0", "#DD8452", "#55A868", "#C44E52", "#8172B3", "#937860", "#DA8BC3", "#8C8C8C"]
 
 
 def load_csv(filepath: str) -> pd.DataFrame:
@@ -82,7 +83,7 @@ def plot_per_token_timeline(json_path: str, output_dir: str, prefix: str = ""):
 
         name = result.get("model_key", "model").replace("/", "_")
         fname = f"token_timeline_{name}_{prefix}.png" if prefix else f"token_timeline_{name}.png"
-        plt.savefig(os.path.join(output_dir, fname), dpi=150)
+        plt.savefig(os.path.join(output_dir, fname), dpi=200)
         plt.close()
         print(f"Saved: {fname}")
 
@@ -103,7 +104,8 @@ def plot_decomposition(json_path: str, output_dir: str, prefix: str = ""):
     values = [pcts[c] for c in categories]
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.barh(categories, values, color=COLORS[:len(categories)])
+    bars = ax.barh(categories, values, color=COLORS[:len(categories)],
+                    edgecolor="black", linewidth=0.5)
     ax.set_xlabel("% of Total Latency")
     plat = data.get("platform", "")
     title_suffix = f" — {plat}" if plat else ""
@@ -116,7 +118,7 @@ def plot_decomposition(json_path: str, output_dir: str, prefix: str = ""):
 
     plt.tight_layout()
     fname = f"decomposition_breakdown_{prefix}.png" if prefix else "decomposition_breakdown.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -135,24 +137,24 @@ def plot_sequence_scaling(csv_path: str, output_dir: str, prefix: str = ""):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     # TTFT vs sequence length
-    ax1.plot(df["prompt_length"], df["ttft_mean_ms"], "o-", color=COLORS[0], linewidth=2)
+    ax1.plot(df["prompt_length"], df["ttft_mean_ms"], "o-", color=BLUE, linewidth=2)
     ax1.fill_between(
         df["prompt_length"],
         df["ttft_mean_ms"] - df["ttft_std_ms"],
         df["ttft_mean_ms"] + df["ttft_std_ms"],
-        alpha=0.2, color=COLORS[0],
+        alpha=0.2, color=BLUE,
     )
     ax1.set_xlabel("Prompt Length (tokens)")
     ax1.set_ylabel("TTFT (ms)")
     ax1.set_title(f"Time to First Token vs Sequence Length{title_suffix}")
 
     # Per-token latency vs sequence length
-    ax2.plot(df["prompt_length"], df["token_mean_ms"], "o-", color=COLORS[1], linewidth=2)
+    ax2.plot(df["prompt_length"], df["token_mean_ms"], "o-", color=BLUE, linewidth=2)
     ax2.fill_between(
         df["prompt_length"],
         df["token_mean_ms"] - df["token_std_ms"],
         df["token_mean_ms"] + df["token_std_ms"],
-        alpha=0.2, color=COLORS[1],
+        alpha=0.2, color=BLUE,
     )
     ax2.set_xlabel("Prompt Length (tokens)")
     ax2.set_ylabel("Per-Token Latency (ms)")
@@ -160,7 +162,7 @@ def plot_sequence_scaling(csv_path: str, output_dir: str, prefix: str = ""):
 
     plt.tight_layout()
     fname = f"scaling_sequence_length_{prefix}.png" if prefix else "scaling_sequence_length.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -180,13 +182,15 @@ def plot_model_size_comparison(csv_path: str, output_dir: str, prefix: str = "")
     x = range(len(df))
     labels = df["model"].tolist()
 
-    ax1.bar(x, df["ttft_mean_ms"], color=COLORS[:len(df)], yerr=df["ttft_std_ms"], capsize=5)
+    ax1.bar(x, df["ttft_mean_ms"], color=BLUE, yerr=df["ttft_std_ms"], capsize=5,
+            edgecolor="black", linewidth=0.5)
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels, rotation=15, ha="right")
     ax1.set_ylabel("TTFT (ms)")
     ax1.set_title(f"Time to First Token by Model Size{title_suffix}")
 
-    ax2.bar(x, df["token_mean_ms"], color=COLORS[:len(df)], yerr=df["token_std_ms"], capsize=5)
+    ax2.bar(x, df["token_mean_ms"], color=BLUE, yerr=df["token_std_ms"], capsize=5,
+            edgecolor="black", linewidth=0.5)
     ax2.set_xticks(x)
     ax2.set_xticklabels(labels, rotation=15, ha="right")
     ax2.set_ylabel("Per-Token Latency (ms)")
@@ -194,7 +198,7 @@ def plot_model_size_comparison(csv_path: str, output_dir: str, prefix: str = "")
 
     plt.tight_layout()
     fname = f"scaling_model_size_{prefix}.png" if prefix else "scaling_model_size.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -216,7 +220,8 @@ def plot_quantization_impact(csv_path: str, output_dir: str, prefix: str = ""):
         ["ttft_mean_ms", "token_mean_ms", "tokens_per_sec"],
         ["TTFT (ms)", "Per-Token Latency (ms)", "Throughput (tokens/sec)"],
     ):
-        ax.bar(x, df[metric].astype(float), color=COLORS[:len(df)])
+        ax.bar(x, df[metric].astype(float), color=BLUE,
+               edgecolor="black", linewidth=0.5)
         ax.set_xticks(x)
         ax.set_xticklabels(labels)
         ax.set_ylabel(title)
@@ -227,7 +232,7 @@ def plot_quantization_impact(csv_path: str, output_dir: str, prefix: str = ""):
     plt.suptitle(f"Impact of Quantization on Inference Latency{title_suffix}", fontsize=14)
     plt.tight_layout()
     fname = f"scaling_quantization_{prefix}.png" if prefix else "scaling_quantization.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -275,7 +280,8 @@ def plot_cross_platform(csv_paths: List[str], output_dir: str, prefix: str = "")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
-    bars1 = ax1.bar(x, ttft_vals, 0.5, color=COLORS[:len(platforms)])
+    bars1 = ax1.bar(x, ttft_vals, 0.5, color=COLORS[:len(platforms)],
+                     edgecolor="black", linewidth=0.5)
     ax1.set_xticks(x)
     ax1.set_xticklabels(platforms, rotation=15, ha="right")
     ax1.set_ylabel("TTFT (ms)")
@@ -284,7 +290,8 @@ def plot_cross_platform(csv_paths: List[str], output_dir: str, prefix: str = "")
         ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
                  f"{val:.1f}", ha="center", fontsize=9)
 
-    bars2 = ax2.bar(x, token_vals, 0.5, color=COLORS[:len(platforms)])
+    bars2 = ax2.bar(x, token_vals, 0.5, color=COLORS[:len(platforms)],
+                     edgecolor="black", linewidth=0.5)
     ax2.set_xticks(x)
     ax2.set_xticklabels(platforms, rotation=15, ha="right")
     ax2.set_ylabel("Per-Token Latency (ms)")
@@ -295,7 +302,7 @@ def plot_cross_platform(csv_paths: List[str], output_dir: str, prefix: str = "")
 
     plt.tight_layout()
     fname = f"cross_platform_comparison_{prefix}.png" if prefix else "cross_platform_comparison.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -305,6 +312,7 @@ def plot_cross_platform(csv_paths: List[str], output_dir: str, prefix: str = "")
 # ============================================================
 
 PLATFORM_HW = {
+    "Mac-M4": {"bw_gbps": 120, "peak_gflops": 2000},
     "Mac-M4PRO": {"bw_gbps": 273, "peak_gflops": 4500},
     "GPU-NVIDIA A100-SXM4-80GB": {"bw_gbps": 2039, "peak_gflops": 312000},
     "Windows-x86": {"bw_gbps": 50, "peak_gflops": 500},
@@ -312,15 +320,44 @@ PLATFORM_HW = {
 
 
 def _match_platform_hw(platform_label: str) -> Optional[Dict]:
-    """Fuzzy-match a platform label to PLATFORM_HW entry."""
-    for key in PLATFORM_HW:
-        if key.lower().replace("-", "").replace("_", "") in \
-           platform_label.lower().replace("-", "").replace("_", ""):
-            return PLATFORM_HW[key]
-        if platform_label.lower().replace("-", "").replace("_", "") in \
-           key.lower().replace("-", "").replace("_", ""):
-            return PLATFORM_HW[key]
-    return None
+    """Fuzzy-match a platform label to PLATFORM_HW entry (4-tier matching)."""
+    _norm = lambda s: s.lower().replace("-", "").replace("_", "").replace(" ", "")
+    _tokenize = lambda s: set(re.split(r"[-_\s]+", s.lower()))
+    label_norm = _norm(platform_label)
+
+    # Tier 1: exact match (after normalization)
+    for key, val in PLATFORM_HW.items():
+        if _norm(key) == label_norm:
+            return val
+
+    # Tier 2: key is substring of label (longest key wins to avoid M4 matching M4PRO)
+    best, best_len = None, 0
+    for key, val in PLATFORM_HW.items():
+        key_norm = _norm(key)
+        if key_norm in label_norm and len(key_norm) > best_len:
+            best, best_len = val, len(key_norm)
+    if best:
+        return best
+
+    # Tier 3: label is substring of key (shortest key wins)
+    best, best_len = None, float("inf")
+    for key, val in PLATFORM_HW.items():
+        key_norm = _norm(key)
+        if label_norm in key_norm and len(key_norm) < best_len:
+            best, best_len = val, len(key_norm)
+    if best:
+        return best
+
+    # Tier 4: token-based matching (most overlapping tokens wins)
+    # Handles cases like tag "mac_arm64_m4" matching key "Mac-M4"
+    label_tokens = _tokenize(platform_label)
+    best, best_score = None, 0
+    for key, val in PLATFORM_HW.items():
+        key_tokens = _tokenize(key)
+        score = len(key_tokens & label_tokens)
+        if score > best_score:
+            best, best_score = val, score
+    return best if best_score >= 2 else None
 
 
 # ============================================================
@@ -372,7 +409,7 @@ def plot_cross_sequence_scaling(seq_csvs: Dict[str, Optional[str]],
 
     plt.tight_layout()
     fname = f"cross_sequence_scaling_{prefix}.png" if prefix else "cross_sequence_scaling.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -404,8 +441,32 @@ def plot_roofline(bottleneck_jsons: Dict[str, Optional[str]],
             bench_frames.append(load_csv(path))
     bench_df = pd.concat(bench_frames, ignore_index=True) if bench_frames else pd.DataFrame()
 
+    # Build PLATFORM_HW key→color index mapping for consistent colors
+    hw_color_idx = {k: i for i, k in enumerate(PLATFORM_HW.keys())}
+
+    # Pre-compute: map each CSV platform string to its PLATFORM_HW key
+    plat_to_hw_key = {}
+    if not bench_df.empty:
+        for plat_str in bench_df["platform"].unique():
+            hw = _match_platform_hw(plat_str)
+            if hw:
+                for k, v in PLATFORM_HW.items():
+                    if v is hw:
+                        plat_to_hw_key[plat_str] = k
+                        break
+
+    # Pre-compute: map each tag to its PLATFORM_HW key
+    tag_to_hw_key = {}
+    for tag in bottleneck_jsons:
+        hw = _match_platform_hw(tag)
+        if hw:
+            for k, v in PLATFORM_HW.items():
+                if v is hw:
+                    tag_to_hw_key[tag] = k
+                    break
+
     # Plot measured workload points from bottleneck JSONs
-    for i, (tag, json_path) in enumerate(bottleneck_jsons.items()):
+    for tag, json_path in bottleneck_jsons.items():
         if not json_path or not os.path.exists(json_path):
             continue
         data = load_json(json_path)
@@ -415,23 +476,28 @@ def plot_roofline(bottleneck_jsons: Dict[str, Optional[str]],
         if ai_val is None or total_flops is None:
             continue
 
-        # Get tokens/sec from benchmark CSV for this platform
-        tps = None
+        # Match tag → PLATFORM_HW key, then find CSV rows with same HW key
+        tag_hw_key = tag_to_hw_key.get(tag)
+        if tag_hw_key is None:
+            continue
+
+        tps, plat_label = None, None
         if not bench_df.empty:
-            # Match platform by tag substring
-            for _, row in bench_df.iterrows():
-                plat_str = str(row.get("platform", ""))
-                if tag.replace("_", "").lower() in plat_str.replace("-", "").replace("_", "").lower() or \
-                   plat_str.replace("-", "").replace("_", "").lower() in tag.replace("_", "").lower():
-                    tps = float(row["tokens_per_sec"])
-                    plat_label = plat_str
+            for csv_plat, csv_hw_key in plat_to_hw_key.items():
+                if csv_hw_key == tag_hw_key:
+                    plat_df = bench_df[bench_df["platform"] == csv_plat]
+                    tps = plat_df["tokens_per_sec"].astype(float).mean()
+                    plat_label = csv_plat
                     break
 
         if tps is None:
             continue
 
         achieved_gflops = total_flops * tps / 1e9
-        color = COLORS[i % len(COLORS)]
+        matched_key = tag_hw_key
+        color_idx = hw_color_idx.get(matched_key, 0)
+        color = COLORS[color_idx % len(COLORS)]
+
         ax.loglog(ai_val, achieved_gflops, "o", color=color, markersize=12,
                   markeredgecolor="black", markeredgewidth=1.5, zorder=5)
         ax.annotate(plat_label, (ai_val, achieved_gflops),
@@ -444,7 +510,7 @@ def plot_roofline(bottleneck_jsons: Dict[str, Optional[str]],
     ax.grid(True, which="both", alpha=0.3)
     plt.tight_layout()
     fname = f"roofline_{prefix}.png" if prefix else "roofline.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -511,7 +577,139 @@ def plot_throughput_vs_bandwidth(bench_csvs: List[str],
     ax.set_ylim(bottom=0)
     plt.tight_layout()
     fname = f"throughput_vs_bandwidth_{prefix}.png" if prefix else "throughput_vs_bandwidth.png"
-    plt.savefig(os.path.join(output_dir, fname), dpi=150)
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
+    plt.close()
+    print(f"Saved: {fname}")
+
+
+# ============================================================
+# Plot 10: Cross-Platform Decomposition Comparison
+# ============================================================
+
+def plot_cross_decomposition(decomp_jsons: Dict[str, Optional[str]],
+                              output_dir: str, prefix: str = ""):
+    """Grouped horizontal bar chart comparing component % breakdown across platforms."""
+    CATEGORIES = ["attention", "mlp", "layernorm", "lm_head", "embedding",
+                   "final_norm", "sampling"]
+
+    platform_data = {}
+    for tag, json_path in decomp_jsons.items():
+        if not json_path or not os.path.exists(json_path):
+            continue
+        data = load_json(json_path)
+        pcts = data.get("category_percentages", {})
+        plat = data.get("platform", tag)
+        if pcts:
+            platform_data[plat] = pcts
+
+    if len(platform_data) < 2:
+        print("Need at least 2 platforms for cross-decomposition plot")
+        return
+
+    # Use only categories that appear in at least one platform
+    active_cats = [c for c in CATEGORIES
+                   if any(c in pcts for pcts in platform_data.values())]
+    platforms = list(platform_data.keys())
+    n_cats = len(active_cats)
+    n_plats = len(platforms)
+
+    fig, ax = plt.subplots(figsize=(12, max(6, n_cats * 0.8)))
+    bar_height = 0.8 / n_plats
+    y = np.arange(n_cats)
+
+    for i, plat in enumerate(platforms):
+        pcts = platform_data[plat]
+        vals = [pcts.get(c, 0) for c in active_cats]
+        offset = (i - n_plats / 2 + 0.5) * bar_height
+        bars = ax.barh(y + offset, vals, bar_height, label=plat,
+                       color=COLORS[i % len(COLORS)],
+                       edgecolor="black", linewidth=0.5)
+        for bar, val in zip(bars, vals):
+            if val > 2:
+                ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height() / 2,
+                        f"{val:.1f}%", va="center", fontsize=8)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels([c.replace("_", " ").title() for c in active_cats])
+    ax.set_xlabel("% of Total Latency")
+    ax.set_title("Latency Decomposition — Cross-Platform Comparison")
+    ax.legend()
+    plt.tight_layout()
+    fname = f"cross_decomposition_{prefix}.png" if prefix else "cross_decomposition.png"
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
+    plt.close()
+    print(f"Saved: {fname}")
+
+
+# ============================================================
+# Plot 11: Cross-Platform Quantization Impact
+# ============================================================
+
+def plot_cross_quantization(quant_csvs: Dict[str, Optional[str]],
+                             output_dir: str, prefix: str = ""):
+    """Grouped bars comparing quantization impact across platforms."""
+    platform_data = {}
+    for tag, csv_path in quant_csvs.items():
+        if not csv_path or not os.path.exists(csv_path):
+            continue
+        df = load_csv(csv_path)
+        plat = df["platform"].iloc[0] if "platform" in df.columns else tag
+        platform_data[plat] = df
+
+    if len(platform_data) < 2:
+        print("Need at least 2 platforms for cross-quantization plot")
+        return
+
+    platforms = list(platform_data.keys())
+    # Get common quantization levels
+    quant_levels = platform_data[platforms[0]]["quantization"].tolist()
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+    n_plats = len(platforms)
+    bar_width = 0.8 / n_plats
+    x = np.arange(len(quant_levels))
+
+    # Subplot 1: Absolute throughput
+    for i, plat in enumerate(platforms):
+        df = platform_data[plat]
+        tps = df["tokens_per_sec"].astype(float).tolist()
+        offset = (i - n_plats / 2 + 0.5) * bar_width
+        ax1.bar(x + offset, tps, bar_width, label=plat,
+                color=COLORS[i % len(COLORS)],
+                edgecolor="black", linewidth=0.5)
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(quant_levels)
+    ax1.set_xlabel("Quantization")
+    ax1.set_ylabel("Throughput (tokens/sec)")
+    ax1.set_title("Throughput by Quantization")
+    ax1.legend()
+
+    # Subplot 2: Speedup relative to F16 (or heaviest quant)
+    for i, plat in enumerate(platforms):
+        df = platform_data[plat]
+        tps = df["tokens_per_sec"].astype(float).tolist()
+        baseline = tps[-1] if tps[-1] > 0 else 1  # F16 is typically last
+        speedup = [t / baseline for t in tps]
+        offset = (i - n_plats / 2 + 0.5) * bar_width
+        bars = ax2.bar(x + offset, speedup, bar_width, label=plat,
+                       color=COLORS[i % len(COLORS)],
+                       edgecolor="black", linewidth=0.5)
+        for bar, val in zip(bars, speedup):
+            ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
+                     f"{val:.2f}x", ha="center", fontsize=8)
+
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(quant_levels)
+    ax2.set_xlabel("Quantization")
+    ax2.set_ylabel("Speedup vs F16")
+    ax2.set_title("Quantization Speedup Factor")
+    ax2.axhline(y=1.0, color="gray", linestyle="--", linewidth=0.8, alpha=0.7)
+    ax2.legend()
+
+    plt.tight_layout()
+    fname = f"cross_quantization_{prefix}.png" if prefix else "cross_quantization.png"
+    plt.savefig(os.path.join(output_dir, fname), dpi=200)
     plt.close()
     print(f"Saved: {fname}")
 
@@ -624,6 +822,20 @@ def main():
 
         # Throughput vs memory bandwidth
         plot_throughput_vs_bandwidth(all_bench_csvs, cross_dir, cross_name)
+
+        # Cross-platform decomposition comparison
+        decomp_jsons_cross = {}
+        for tag in sorted(tags):
+            jsons = sorted(glob.glob(os.path.join(data_dir, f"decomposition_{tag}_*.json")))
+            jsons = [f for f in jsons if "_steps" not in f]
+            decomp_jsons_cross[tag] = jsons[-1] if jsons else None
+        plot_cross_decomposition(decomp_jsons_cross, cross_dir, cross_name)
+
+        # Cross-platform quantization impact
+        quant_csvs = {}
+        for tag in sorted(tags):
+            quant_csvs[tag] = find_latest(data_dir, f"scaling_{tag}_*_quantization.csv")
+        plot_cross_quantization(quant_csvs, cross_dir, cross_name)
 
     print(f"\nAll plots saved to {args.output_dir}/")
 
